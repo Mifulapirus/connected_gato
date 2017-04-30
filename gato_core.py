@@ -1,9 +1,7 @@
+import sys
 import telepot
 from pprint import pprint
-
-
 import time
-
 from neopixel import *
 
 
@@ -15,6 +13,9 @@ LED_DMA        = 5       # DMA channel to use for generating signal (try 5)
 LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 
+#TelegramBot configuration: 
+TOKEN = '347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY'
+
 def colorWipe(strip, color, wait_ms=50):
 	"""Wipe color across display a pixel at a time."""
 	for i in range(strip.numPixels()):
@@ -22,6 +23,13 @@ def colorWipe(strip, color, wait_ms=50):
 		strip.show()
 		time.sleep(wait_ms/1000.0)
 
+
+def handle(msg):
+    content_type, chat_type, chat_id = telepot.glance(msg)
+    print(content_type, chat_type, chat_id)
+
+    if content_type == 'text':
+        bot.sendMessage(chat_id, msg['text'])
 
 
 
@@ -34,6 +42,11 @@ if __name__ == '__main__':
 
 	colorWipe(strip, Color(0, 255, 0))  # Blue wipe
 	colorWipe(strip, Color(0, 0, 0))  # Off wipe
-	print "Here is the beginning of your connected gato:"
-	bot = telepot.Bot('347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY')
-	print bot.getMe()
+
+	bot = telepot.Bot(TOKEN)
+	bot.message_loop(handle)
+	print ('Your Connected Gato is now listening ...')
+
+	# Keep the program running.
+	while 1:
+    	time.sleep(10)
