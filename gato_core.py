@@ -40,7 +40,7 @@ if __name__ == '__main__':
 	# Intialize the library (must be called once before other functions).
 	strip.begin()
 
-	colorWipe(strip, Color(0, 255, 0))  # Blue wipe
+	colorWipe(strip, Color(0, 0, 255))  # Blue wipe GRB
 	colorWipe(strip, Color(0, 0, 0))  # Off wipe
 
 	bot = telepot.Bot(TOKEN)
