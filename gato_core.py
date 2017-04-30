@@ -21,14 +21,17 @@ def colorWipe(strip, color, wait_ms=50):
 	for i in range(strip.numPixels()):
 		strip.setPixelColor(i, color)
 		strip.show()
-		time.sleep(wait_ms/1000.0)
+		time.sleep(wait_ms/500.0)
 
 
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     print(content_type, chat_type, chat_id)
-
+    print msg
+    
     if content_type == 'text':
+    	print "New message from:	" + msg['chat_id']
+    	print "Message content:		" + msg['text']
         bot.sendMessage(chat_id, msg['text'])
 
 
@@ -49,4 +52,4 @@ if __name__ == '__main__':
 
 	# Keep the program running.
 	while 1:
-    	time.sleep(10)
+		time.sleep(10)
