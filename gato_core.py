@@ -1,6 +1,6 @@
 '''--------------------
 TODO:
-	Make it run on boot
+	Log the output of the script
 	Split it in different files
 	Fix the style
 	Send Angel who sent a message
@@ -44,7 +44,8 @@ simplified_color_blocks = 1
 current_brightness = 1
 
 #TelegramBot configuration: 
-TOKEN = '347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY'
+#TOKEN = '347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY'	#gatogatobot
+TOKEN = '377513945:AAHXHnH1jmDVtPvt1luhB0zSN1equJivY58'	#ConnectedYellowGatoBot
 
 #Command List
 commands = {'commands': ['commands', 'command', '/command', '/commands'],

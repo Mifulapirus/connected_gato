@@ -5,8 +5,9 @@ Miau. (Yeah, gatos do Miau!)
 
 Libraries used:
 ---------------
-- Python-telegram-bot: https://github.com/python-telegram-bot/python-telegram-bot
+- Telepot: http://telepot.readthedocs.io/en/latest/
 - LED strip: https://github.com/jgarff/rpi_ws281x
+- Flickr API: http://joequery.me/code/flickr-api-image-search-python/
 
 Installation:
 -------------
@@ -32,3 +33,30 @@ sudo nano /etc/modprobe.d/snd-blacklist.conf
 
 4.2 Blacklist the sound card by typing the following and saving the file
 blacklist snd_bcm2835
+
+5. Install PIL library
+
+6. Install Telepot (Telegram Bot) library
+pip install telepot
+
+
+7. Install ZeroTier
+curl -s https://install.zerotier.com/ | sudo bash
+
+8. Create the upstart job on Jessie
+sudo nano /lib/systemd/system/gato-core.service
+
+	[Unit]
+	Description=Start and stop your connected gato
+	After=multi-user.target
+
+	[Service]
+	Type=idle
+	ExecStart=/usr/bin/python /home/pi/connected_gato/gato_core.py
+
+	[Install]
+	WantedBy=multi-user.target
+
+sudo chmod 644 /lib/systemd/system/gato_core.service
+sudo systemctl daemon-reload
+sudo systemctl enable gato-core.service
