@@ -8,10 +8,11 @@ TODO:
 '''
 
 import sys
-import telepot
 from pprint import pprint
 import time
+import Adafruit_BMP.BMP085 as BMP085
 from neopixel import *
+import telepot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from PIL import Image, ImageDraw
 import urllib
@@ -19,6 +20,14 @@ from random import randrange
 import requests
 import json
 import os.path
+import datetime
+
+print str(datetime.datetime.now()) + "  Starting Connected Gato"
+
+#Time Variables
+start_time = time.time()
+elapsed_time = 0
+
 
 SUCCESS = True
 FAIL = False
@@ -42,18 +51,30 @@ LED_BLUE_CORRECTION 	= 0.85
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
 simplified_color_blocks = 1
 current_brightness = 1
+current_r = 0
+current_g = 0
+current_b = 0
 
 #TelegramBot configuration: 
 #TOKEN = '347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY'	#gatogatobot
 TOKEN = '377513945:AAHXHnH1jmDVtPvt1luhB0zSN1equJivY58'	#ConnectedYellowGatoBot
 
+#Pressure Sensor:
+sensor = BMP085.BMP085()
+standard_pressure = 0
+pressure_threshold = 50.0
+pressure_timer = 5*60
+pressure_last_update = 0
+
 #Command List
 commands = {'commands': ['commands', 'command', '/command', '/commands'],
-			'flickr': ['look like', 'make it', 'make the cat'],
+			'google': ['look like', 'make it', 'make the cat'],
 			'color blocks': ['color blocks', 'simplify colors', '/colorblocks'], 
-			'brightness': ['brightness', '/brightness']}
+			'brightness': ['brightness', '/brightness'],
+			'temperature': ['temperature', '/temperature', 'temp', '/temp']}
 
 color_list = {'white': [255, 255, 255] , 'red': [255, 0, 0], 'green': [0, 255, 0], 'blue': [0, 0, 255], 'off': [0, 0, 0,]}
+
 
 def on_chat_message(msg):
 	content_type, chat_type, chat_id = telepot.glance(msg)
@@ -100,7 +121,11 @@ def process_command(msg):
 			[InlineKeyboardButton(text='High', callback_data='set brightness = 1')],])
 		bot.sendMessage(chat_id, 'How bright shall I get?', reply_markup=keyboard)
 
-	elif any(word in message for word in commands['flickr']):
+	elif message in commands['temperature']:
+		bot.sendMessage(chat_id, "It's " + str(get_temperature()) + " degrees")
+
+
+	elif any(word in message for word in commands['google']):
 		google_color(chat_id, message)
 
 	elif any(word in message for word in color_list):
@@ -108,6 +133,8 @@ def process_command(msg):
 		print matching_color 
 		process_color_name(strip, message)
 		print "Ok, connected Gato is now " + message
+		bot.sendMessage(chat_id, 'Connected gato is now' + message)
+
 
 	else:
 		bot.sendMessage(chat_id, 'Sorry, no entendi')
@@ -135,7 +162,6 @@ def on_callback_query(msg):
 		print "  New brightness level: " + str(current_brightness)
 		bot.answerCallbackQuery(query_id, text="My brightness level is now " + str(current_brightness*100) + "%")
 
-
 def process_color_name(strip, color_name):
 	print "Turning " + str(color_list[color_name])
 	red_channel = int(color_list[color_name][0])
@@ -151,8 +177,11 @@ def colorWipe(strip, color, wait_ms=20):
 		strip.show()
 		time.sleep(wait_ms/1000.0)
 
-def set_single_led(led_number, r, g, b, brightness=current_brightness):
+def set_single_led(led_number, r, g, b, brightness=current_brightness, override=True):
 	global current_brightness
+	global current_r
+	global current_g
+	global current_b
 	brightness = current_brightness
 
 	#print "Current brightness: " + str(brightness)
@@ -164,13 +193,17 @@ def set_single_led(led_number, r, g, b, brightness=current_brightness):
 	#print "  R: " + str(red_channel)
 	#print "  G: " + str(green_channel)
 	#print "  B: " + str(blue_channel)
-	
+	if override == True:
+		current_r = red_channel
+		current_g = green_channel
+		current_b = blue_channel
+
 	strip.setPixelColor(led_number, Color(green_channel, red_channel, blue_channel))
 	strip.show()
 	
-def set_all_leds(r, g, b, brightness=current_brightness):
+def set_all_leds(r, g, b, brightness=current_brightness, override=True):
 	for i in range(strip.numPixels()+1):
-		set_single_led(i, r, g, b, brightness)
+		set_single_led(i, r, g, b, brightness, override)
 
 def google_color(chat_id, message):
 	for known_term in commands['flickr']:
@@ -218,9 +251,6 @@ def google_color(chat_id, message):
 		print "Something went wrong"
 		print r.status_code
 		#pprint(response)
-		
-
-	
 
 def get_image_colors(infile, outfile, numcolors=simplified_color_blocks, swatchsize=20, resize=150):
 	try:
@@ -270,25 +300,101 @@ def get_image_colors(infile, outfile, numcolors=simplified_color_blocks, swatchs
 		print "ERROR: Can't open " + str(infile)
 		return FAIL
 
+def get_pressure(samples = 10):
+	cumulative_pressure = 0.0
+	for i in range(0, samples):
+		cumulative_pressure += sensor.read_pressure()
+	
+	current_pressure = cumulative_pressure/samples
+	#print "Current Pressure: " + str(current_pressure)
+	return current_pressure
+
+def get_temperature(samples = 1):
+	cumulative_temp = 0.0
+	for i in range(0, samples):
+		_current_temp = sensor.read_temperature()
+		cumulative_temp += _current_temp
+		print " Temp " + str(i) + ": " + str(_current_temp) + " --> " + str(cumulative_temp)
+		time.sleep(0.01)
+	
+	print " Cumulative = " + str(cumulative_temp)
+	print " Samples =    " + str(samples)
+	current_temp = cumulative_temp/samples
+	#print "Current Pressure: " + str(current_pressure)
+	return current_temp
+
+def get_ambient_pressure():
+	global standard_pressure
+	global _min_pressure_threshold
+	global _max_pressure_threshold
+
+	standard_pressure = get_pressure(10)
+	_min_pressure_threshold = int(standard_pressure - pressure_threshold)
+	_max_pressure_threshold = int(standard_pressure + pressure_threshold)
+	
+	print str(datetime.datetime.now()) + "  Reading initial pressure..."
+	print str(datetime.datetime.now()) + "    Current Pressure: " + str(standard_pressure)
+	print str(datetime.datetime.now()) + "    Threshold:        " + str(pressure_threshold)
+	print str(datetime.datetime.now()) + "    Min Threshold:    " + str(_min_pressure_threshold)
+	print str(datetime.datetime.now()) + "    Max Threshold:    " + str(_max_pressure_threshold)
 
 
 if __name__ == '__main__':
-	# Intialize the library (must be called once before other functions).
-	strip.begin()
+	print "----------------------------"
+	print "|     Connected Gato       |"
+	print "----------------------------"
 
+	print str(datetime.datetime.now()) + "  Starting LED strip..."
+	strip.begin()
+	print str(datetime.datetime.now()) + "    ... Done"
+
+	print str(datetime.datetime.now()) + "  Starting Telegram Bot"
+	bot = telepot.Bot(TOKEN)
+	bot.message_loop({'chat': on_chat_message, 'callback_query': on_callback_query})	
+	print str(datetime.datetime.now()) + "    ... Done"
+	
+	print str(datetime.datetime.now()) + "  Temperature: " + str(get_temperature())
+	print str(datetime.datetime.now()) + "  Your Connected Gato is now listening"
 	colorWipe(strip, Color(0, 0, 255))  # Blue wipe GRB
 	colorWipe(strip, Color(0, 0, 0))  # Off wipe
 
-	bot = telepot.Bot(TOKEN)
-	#bot.message_loop(handle)
-	bot.message_loop({'chat': on_chat_message, 'callback_query': on_callback_query})	
-
-	#print "List of available colors"
-
-
-
-	print ('Your Connected Gato is now listening ...')
-
 	# Keep the program running.
+	_min_pressure_delta = 0.0
+	_pressure_delta = 0.0
+	_100_division = 0.0
+	_compressing = False
+	_decompressing = False
+
 	while 1:
-		time.sleep(10)
+		_current_pressure = get_pressure(5)
+		_pressure_delta = standard_pressure - _current_pressure
+		
+		if pressure_last_update < (time.time() - pressure_timer):
+			print "Time to update the pressure"
+			get_ambient_pressure()
+			pressure_last_update = time.time()
+			print "  Next pressure update in " + str((pressure_timer)/60) + " minutes" 
+
+		if (_min_pressure_threshold < _current_pressure < _max_pressure_threshold):
+			if _decompressing == True:
+				_min_pressure_delta = 0.0
+				_decompressing = False
+
+				colorWipe(strip, Color(255, 0, 0))  # Blue wipe GRB
+				colorWipe(strip, Color(0, 0, 0))  # Off wipe
+				colorWipe(strip, Color(current_g, current_r, current_b))  # Blue wipe GRB
+
+		elif _current_pressure < _max_pressure_threshold:
+			print "Decompressing: " + str(_pressure_delta)
+			if _compressing == True:
+				_compressing = False
+				_decompressing = True
+				colorWipe(strip, Color(255, 255, 0))  # Blue wipe GRB
+
+		else:
+			print "Compressing: " + str(_pressure_delta)
+			_compressing = True
+			set_all_leds(255, 0, 0, 1, False)	
+
+
+		

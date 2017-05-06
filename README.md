@@ -7,7 +7,7 @@ Libraries used:
 ---------------
 - Telepot: http://telepot.readthedocs.io/en/latest/
 - LED strip: https://github.com/jgarff/rpi_ws281x
-- Flickr API: http://joequery.me/code/flickr-api-image-search-python/
+- BMP Library (Pressure sensor)
 
 Installation:
 -------------
@@ -43,7 +43,7 @@ pip install telepot
 7. Install ZeroTier
 curl -s https://install.zerotier.com/ | sudo bash
 
-8. Create the upstart job on Jessie
+8. Create the upstart job on Jessie: http://www.raspberrypi-spy.co.uk/2015/10/how-to-autorun-a-python-script-on-boot-using-systemd/
 sudo nano /lib/systemd/system/gato-core.service
 
 	[Unit]
@@ -60,3 +60,10 @@ sudo nano /lib/systemd/system/gato-core.service
 sudo chmod 644 /lib/systemd/system/gato_core.service
 sudo systemctl daemon-reload
 sudo systemctl enable gato-core.service
+
+9. Install the BMP180 library
+sudo apt-get install python-smbus
+git clone https://github.com/adafruit/Adafruit_Python_BMP.git
+9.1 Test it
+	cd Adafruit_Python_BMP
+	sudo python setup.py install
