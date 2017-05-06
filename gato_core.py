@@ -56,8 +56,9 @@ current_g = 0
 current_b = 0
 
 #TelegramBot configuration: 
-#TOKEN = '347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY'	#gatogatobot
-TOKEN = '377513945:AAHXHnH1jmDVtPvt1luhB0zSN1equJivY58'	#ConnectedYellowGatoBot
+TOKEN = '347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY'	#gatogatobot
+#TOKEN = '377513945:AAHXHnH1jmDVtPvt1luhB0zSN1equJivY58'	#ConnectedYellowGatoBot
+OWNER_CHAT_ID = 17186779
 
 #Pressure Sensor:
 sensor = BMP085.BMP085()
@@ -89,6 +90,8 @@ def on_chat_message(msg):
 
 def process_command(msg):
 	content_type, chat_type, chat_id = telepot.glance(msg)
+	print "Received Message: "
+	pprint(msg)
 	#Make it lowercase
 	message = msg['text'].lower()
 
@@ -133,7 +136,7 @@ def process_command(msg):
 		print matching_color 
 		process_color_name(strip, message)
 		print "Ok, connected Gato is now " + message
-		bot.sendMessage(chat_id, 'Connected gato is now' + message)
+		bot.sendMessage(chat_id, 'Connected gato is now ' + message)
 
 
 	else:
@@ -206,7 +209,7 @@ def set_all_leds(r, g, b, brightness=current_brightness, override=True):
 		set_single_led(i, r, g, b, brightness, override)
 
 def google_color(chat_id, message):
-	for known_term in commands['flickr']:
+	for known_term in commands['google']:
 			search_term = str(message.replace(known_term, ""))
 		
 	print search_term
@@ -355,6 +358,8 @@ if __name__ == '__main__':
 	
 	print str(datetime.datetime.now()) + "  Temperature: " + str(get_temperature())
 	print str(datetime.datetime.now()) + "  Your Connected Gato is now listening"
+	#Text Angel when Connected gato is ready
+	bot.sendMessage(OWNER_CHAT_ID, "I'm up! It's like " + str(get_temperature()) + " degrees in here!")
 	colorWipe(strip, Color(0, 0, 255))  # Blue wipe GRB
 	colorWipe(strip, Color(0, 0, 0))  # Off wipe
 
@@ -382,6 +387,7 @@ if __name__ == '__main__':
 
 				colorWipe(strip, Color(255, 0, 0))  # Blue wipe GRB
 				colorWipe(strip, Color(0, 0, 0))  # Off wipe
+				bot.sendMessage(OWNER_CHAT_ID, "I've just been squished")
 				colorWipe(strip, Color(current_g, current_r, current_b))  # Blue wipe GRB
 
 		elif _current_pressure < _max_pressure_threshold:
