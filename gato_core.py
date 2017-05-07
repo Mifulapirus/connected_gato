@@ -5,6 +5,8 @@ TODO:
 	Fix the style
 	Send Angel who sent a message
 	Install Zerotier
+	Make it a hotspot
+	Add new Wifi on line 180 or so
 '''
 
 import sys
@@ -21,6 +23,8 @@ import requests
 import json
 import os.path
 import datetime
+from wifi import Cell, Scheme
+
 
 print str(datetime.datetime.now()) + "  Starting Connected Gato"
 
@@ -67,14 +71,30 @@ pressure_threshold = 50.0
 pressure_timer = 5*60
 pressure_last_update = 0
 
+#Wifi Stuff
+wifi_list = ""
+wifi_setup_started = False
+
 #Command List
 commands = {'commands': ['commands', 'command', '/command', '/commands'],
 			'google': ['look like', 'make it', 'make the cat'],
 			'color blocks': ['color blocks', 'simplify colors', '/colorblocks'], 
 			'brightness': ['brightness', '/brightness'],
-			'temperature': ['temperature', '/temperature', 'temp', '/temp']}
+			'temperature': ['temperature', '/temperature', 'temp', '/temp'], 
+			'wifi': ['scan', 'connect']}
 
 color_list = {'white': [255, 255, 255] , 'red': [255, 0, 0], 'green': [0, 255, 0], 'blue': [0, 0, 255], 'off': [0, 0, 0,]}
+
+def add_new_wifi(wifi_id, passkey):
+	cell = Cell.all('wlan0')[wifi_id]
+	scheme = Scheme.for_cell('wlan0', cell.ssid, cell, passkey)
+	scheme.save()
+	return scheme.activate()
+
+def scann_wifi(interface='wlan0'):
+	ssid_list = Cell.all(interface)
+	#pprint(ssid_list)
+	return ssid_list
 
 
 def on_chat_message(msg):
@@ -89,10 +109,12 @@ def on_chat_message(msg):
 		process_command(msg)
 
 def process_command(msg):
+	global wifi_setup_started
 	content_type, chat_type, chat_id = telepot.glance(msg)
 	print "Received Message: "
 	pprint(msg)
 	#Make it lowercase
+	original_msg = msg['text']
 	message = msg['text'].lower()
 
 	print message
@@ -109,11 +131,13 @@ def process_command(msg):
 
 	elif message in commands['color blocks']:
 		print "Set number of color blocks"
-		keyboard = InlineKeyboardMarkup(inline_keyboard=[
+		inline_keyboard=[
 			[InlineKeyboardButton(text='1', callback_data='set simplified_color_blocks = 1')],
 			[InlineKeyboardButton(text='2', callback_data='set simplified_color_blocks = 2')],
 			[InlineKeyboardButton(text='3', callback_data='set simplified_color_blocks = 3')],
-			[InlineKeyboardButton(text='4', callback_data='set simplified_color_blocks = 4')],])
+			[InlineKeyboardButton(text='4', callback_data='set simplified_color_blocks = 4')],]
+
+		keyboard = InlineKeyboardMarkup()
 		bot.sendMessage(chat_id, 'How many block should I use?', reply_markup=keyboard)
 	
 	elif message in commands['brightness']:
@@ -122,11 +146,23 @@ def process_command(msg):
 			[InlineKeyboardButton(text='Low', callback_data='set brightness = 0.2')],
 			[InlineKeyboardButton(text='Medium', callback_data='set brightness = 0.5')],
 			[InlineKeyboardButton(text='High', callback_data='set brightness = 1')],])
+
 		bot.sendMessage(chat_id, 'How bright shall I get?', reply_markup=keyboard)
+	
+	elif message in commands['wifi']:
+		if message == 'scan':
+			wifi_list = scann_wifi()			
+			i = 0
+			_inline_keyboard=[]
+			for i, ap in enumerate(wifi_list):
+				print str(i) + ". " + str(ap)
+				_inline_keyboard.append([InlineKeyboardButton(text = str(i) + " " + str(ap.ssid) + " " + str(ap.signal), callback_data=str('wifi_id = ' + str(i)))])
+			
+			keyboard = InlineKeyboardMarkup(inline_keyboard=_inline_keyboard)
+			bot.sendMessage(chat_id, "Here are the WiFis I can see: ", reply_markup=keyboard)
 
 	elif message in commands['temperature']:
 		bot.sendMessage(chat_id, "It's " + str(get_temperature()) + " degrees")
-
 
 	elif any(word in message for word in commands['google']):
 		google_color(chat_id, message)
@@ -138,11 +174,17 @@ def process_command(msg):
 		print "Ok, connected Gato is now " + message
 		bot.sendMessage(chat_id, 'Connected gato is now ' + message)
 
-
 	else:
-		bot.sendMessage(chat_id, 'Sorry, no entendi')
+		if wifi_setup_started == True:
+			print "Wifi Password: " + original_msg
+			#add_new_wifi()
+			wifi_setup_started = False
+
+		else:
+			bot.sendMessage(chat_id, 'Sorry, no entendi')
 
 def on_callback_query(msg):
+	global wifi_setup_started
 	query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
 	#print('Callback Query:', query_id, from_id, query_data)
 	
@@ -163,7 +205,15 @@ def on_callback_query(msg):
 		global current_brightness 
 		current_brightness = float(str(query_data.replace("set brightness = ", "")))
 		print "  New brightness level: " + str(current_brightness)
-		bot.answerCallbackQuery(query_id, text="My brightness level is now " + str(current_brightness*100) + "%")
+		bot.answerCallbackQuery(from_id, text="My brightness level is now " + str(current_brightness*100) + "%")
+
+	elif "wifi_id = " in query_data:
+		wifi_id = int(str(query_data.replace("wifi_id = ", "")))
+		print Cell.all('wlan0')[wifi_id]
+		_ssid = Cell.all('wlan0')[wifi_id].ssid
+		wifi_setup_started = True
+		bot.sendMessage(from_id, "What's the password for " + str(_ssid) + "?")
+
 
 def process_color_name(strip, color_name):
 	print "Turning " + str(color_list[color_name])
