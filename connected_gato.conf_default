@@ -49,3 +49,8 @@ bot_led_count = 15
 #Where do you want the heart to be?
 heart_led = 16
 heartbeat_intensity = 50
+
+#Google API
+[google]
+key = 24601ABCDEFGHIJKLMNOPQRSTUVWXYZ24601ABC
+cx = 246012460124601246012:abcdef_gh_i
