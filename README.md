@@ -64,7 +64,7 @@ sudo python ~/connected_gato/Adafruit_Python_BMP/setup.py install
 sudo pip install wifi
 
 11. Install Git Python
-pip install GitPython
+sudo pip install GitPython
 
 12. Create the upstart job on Jessie: http://www.raspberrypi-spy.co.uk/2015/10/how-to-autorun-a-python-script-on-boot-using-systemd/
 sudo nano /lib/systemd/system/gato-core.service
