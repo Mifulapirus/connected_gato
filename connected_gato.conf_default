@@ -7,8 +7,9 @@ owner = NAME OF THE OWNER
 [telegram]
 #Bot Token
 token = 246010000:TokenYouGotFromTelegram
-#ID of the Owner or Administrator
+#ID of the Owner
 owner_id = 24601000 
+admin_id = 24601111
 
 #Cat-Cat communication interface
 [socket]
