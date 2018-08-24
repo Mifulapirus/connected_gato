@@ -1,5 +1,6 @@
+#!/usr/bin/env python
+
 """
- Testing autoreboot
  Title: Connected Gato Core
  Description: This is the heart of your Connected Gato
 """ 
@@ -111,7 +112,7 @@ def on_chat_message(msg):
 def restart_gato_core():
 	#Restarts the current program, with file objects and descriptors cleanup
     
-	try:
+	'''try:
 		p = psutil.Process(os.getpid())
 		for handler in p.get_open_files() + p.connections():
 			os.close(handler.fd)
@@ -119,7 +120,12 @@ def restart_gato_core():
 		print e
 
 	python = sys.executable
-	os.execl(python, python, *sys.argv)
+	os.execl(python, python, *sys.argv)'''
+	
+	#this seems to work, but I need to clean up all objects
+	#os.execv('/home/pi/connected_gato/gato_core.py', [''])  
+	print "Can't reboot by myself yet"
+	
 	
 def process_command(msg):
 	global wifi_setup_started
@@ -171,9 +177,10 @@ def process_command(msg):
 	
 	elif message in commands['update']:
 		print "Start Updating"
-		result = update_cat.update_firmware()
 		if result == "Already up-to-date.":
 			telegram_send(chat_id, "I'm already up to date... I like that you keep an eye on my health!")
+			print "Restarting anyway"
+			restart_gato_core()
 		else:
 			telegram_send(chat_id, "I have been updated.\n Here is the result:")
 			telegram_send(chat_id, str(result))
