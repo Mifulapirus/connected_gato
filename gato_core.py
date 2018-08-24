@@ -159,18 +159,15 @@ def process_command(msg):
 		global alarm_time
 
 		for known_term in commands['set alarm']:
-			print known_term
 			message = str(message.replace(known_term, ""))
 		message = message.replace(" ", "")
 
 		#Check if the remaining of the message is in time format
 		try:
-			time.strptime(message, '%H:%M')
-			print message
-			alarm_time = message
-			
+			alarm_time = time.strptime(message, '%H:%M')
+						
 			telegram_send(chat_id, 'It is ' + time.strftime("%H:%M", time.localtime()))
-			telegram_send(chat_id, 'I will light up at ' + alarm_time)
+			telegram_send(chat_id, 'I will light up at ' + time.strftime("%H:%M", alarm_time))
 			
 		
 		except ValueError:
@@ -469,12 +466,6 @@ if __name__ == '__main__':
 		print err
 
 	print str(datetime.datetime.now()) + "  Setting up the Timezone"
-	#localtz = dateutil.tz.tzlocal()
-	#print localtz
-	#os.environ['TZ'] = localtz.tzname(datetime.datetime.now(localtz))
-	#print os.environ['TZ']
-	#time.tzset()
-	#print "It is " + str(datetime.datetime.now())
 	
 	print str(datetime.datetime.now()) + "  Starting LED strip..."
 	print str(datetime.datetime.now()) + "    ... Done"
@@ -523,11 +514,10 @@ if __name__ == '__main__':
 			_current_compression_state = pressure_sensor.current_compressiong_state
 
 			if alarm_time != None:
-				if alarm_time == str(time.strftime("%H:%M", time.localtime())):
+				if time.strftime("%H:%M", alarm_time) == time.strftime("%H:%M", time.localtime()):
 					print "ALARM!"
 					strip.colorWipe(245, 208, 76)  # Yellow wipe GRB
 					telegram_send(OWNER_CHAT_ID, 'WAKE UP!!!!!')
-
 					alarm_time = None
 				
 			if _current_compression_state != _previous_compression_state:
