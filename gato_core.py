@@ -19,6 +19,7 @@ TODO:
 	Send Angel who sent a message
 	Make it a hotspot
 	Add new Wifi on line 180 or so
+	Add I am up, but your paired cat is not :(
 """
 
 import sys
