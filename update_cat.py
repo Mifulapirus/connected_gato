@@ -12,5 +12,13 @@ __status__ = "beta"
 
 import git 
 
-git_obj = git.cmd.Git("/home/pi/connected_gato/")
-print git_obj.pull()
+def update_firmware():
+	print "  Updating Cat Software" 
+	git_obj = git.cmd.Git("/home/pi/connected_gato/")
+	result = git_obj.pull()
+	return result
+	
+if __name__ == '__main__':
+	print "Executing Update independently from Gato core"
+	print update_firmware()
+	
