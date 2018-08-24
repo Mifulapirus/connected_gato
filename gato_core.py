@@ -177,6 +177,7 @@ def process_command(msg):
 	
 	elif message in commands['update']:
 		print "Start Updating"
+		result = update_cat.update_firmware()
 		if result == "Already up-to-date.":
 			telegram_send(chat_id, "I'm already up to date... I like that you keep an eye on my health!")
 			print "Restarting anyway"
