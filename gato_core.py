@@ -458,8 +458,8 @@ if __name__ == '__main__':
 		name = config.get('general', 'name')
 		owner = config.get('general', 'owner')
 		#Google API
-		google_key = 'AIzaSyAHiMIKRaDbsgKmkY8rNjenuD8oFXXR1ME'
-		google_cx = '000645986483467971235:czxngi_yt_q'
+		google_key = config.get('google', 'key')
+		google_cx = config.get('google', 'cx')
 		
 		print "    Name: " + name
 		print "    Owner: " + owner
@@ -529,8 +529,6 @@ if __name__ == '__main__':
 					telegram_send(OWNER_CHAT_ID, 'WAKE UP!!!!!')
 
 					alarm_time = None
-
-				
 				
 			if _current_compression_state != _previous_compression_state:
 				print "Pressure changed to " + _current_compression_state
@@ -558,9 +556,9 @@ if __name__ == '__main__':
 					_previous_compression_state = _current_compression_state
 
 				elif pressure_sensor.current_compressiong_state == "calibrated":
-					#print "calibrated"
+					print "Calibrated to " + str(pressure_sensor.ambient_pressure) + "Pa"
 					pressure_sensor.ambient_pressure
-					telegram_send(OWNER_CHAT_ID, ("Calibrated to " + str(pressure_sensor.ambient_pressure) + "Pa"))
+					#telegram_send(OWNER_CHAT_ID, ("Calibrated to " + str(pressure_sensor.ambient_pressure) + "Pa"))
 					_previous_compression_state = "stable" #This avoids triggering the "stable" state
 					
 				else:
