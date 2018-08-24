@@ -15,7 +15,6 @@ TODO:
 	Split it in different files
 	Fix the style
 	Send Angel who sent a message
-	Install Zerotier
 	Make it a hotspot
 	Add new Wifi on line 180 or so
 """
@@ -103,7 +102,6 @@ def on_chat_message(msg):
 		message = msg['text'].lower()
 		print "New message from:        " + msg['from']['first_name']
 		print "Message content:         " + msg['text']
-
 		process_command(msg)
 
 def process_command(msg):
@@ -164,11 +162,9 @@ def process_command(msg):
 
 		#Check if the remaining of the message is in time format
 		try:
-			alarm_time = time.strptime(message, '%H:%M')
-						
+			alarm_time = time.strptime(message, '%H:%M')			
 			telegram_send(chat_id, 'It is ' + time.strftime("%H:%M", time.localtime()))
 			telegram_send(chat_id, 'I will light up at ' + time.strftime("%H:%M", alarm_time))
-			
 		
 		except ValueError:
 			telegram_send(chat_id, 'Sorry, can you send me the time in HH:MM format, please?\n I got ' + message)
@@ -281,8 +277,6 @@ def process_command(msg):
 			wifi_driver.connect_wifi(original_msg)
 			wifi_setup_started = False
 
-		#else:
-		#	telegram_send(chat_id, 'Sorry, no entendi')
 
 def on_callback_query(msg):
 	global wifi_setup_started
@@ -299,7 +293,6 @@ def on_callback_query(msg):
 		print "Change number of simplified blocks"
 		strip.simplified_color_blocks = int(str(query_data.replace("set simplified_color_blocks = ", "")))
 		print "  New number of blocks: " + str(strip.simplified_color_blocks)
-		#bot.answerCallbackQuery(from_id, text="I will use " + str(strip.simplified_color_blocks) + " LED blocks")
 		bot.answerCallbackQuery(query_id, text="I will use " + str(strip.simplified_color_blocks) + " LED blocks")
 
 	elif "set brightness = " in query_data:
@@ -516,7 +509,7 @@ if __name__ == '__main__':
 			if alarm_time != None:
 				if time.strftime("%H:%M", alarm_time) == time.strftime("%H:%M", time.localtime()):
 					print "ALARM!"
-					strip.colorWipe(245, 208, 76)  # Yellow wipe GRB
+					strip.colorWipe(245, 208, 76)  #Yellow wipe GRB
 					telegram_send(OWNER_CHAT_ID, 'WAKE UP!!!!!')
 					alarm_time = None
 				
