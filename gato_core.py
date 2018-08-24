@@ -1,4 +1,16 @@
-'''--------------------
+"""
+ Title: Connected Gato Core
+ Description: This is the heart of your Connected Gato
+""" 
+__author__ = "Angel Hernandez"
+__contributors__ = "Angel Hernandez"
+__license__ = "GPL"
+__version__ = "0.1"
+__maintainer__ = "Angel Hernandez"
+__email__ = "angel@tupperbot.com"
+__status__ = "beta"
+
+"""--------------------
 TODO:
 	Split it in different files
 	Fix the style
@@ -6,7 +18,7 @@ TODO:
 	Install Zerotier
 	Make it a hotspot
 	Add new Wifi on line 180 or so
-'''
+"""
 
 import sys
 from pprint import pprint
@@ -31,8 +43,6 @@ import telegram_driver
 import p2p_driver
 import ConfigParser
 
-
-
 print str(datetime.datetime.now()) + "  Starting Connected Gato"
 
 config_file_path = "/home/pi/connected_gato/connected_gato.conf"
@@ -47,10 +57,6 @@ FAIL = False
 thingspeak = thingspeak_driver.thingspeak_driver()
 thingspeak_delay = 60
 thingspeak_last_update = 0
-
-#Google API
-key = 'AIzaSyAHiMIKRaDbsgKmkY8rNjenuD8oFXXR1ME'
-cx = '000645986483467971235:czxngi_yt_q'
 
 # LED strip configuration:
 strip = led_driver.led_driver()
@@ -337,7 +343,7 @@ def google_color(chat_id, message):
 
 	telegram_send(chat_id, 'Let me see what I can find for ' + search_term)
 
-	search_url = "https://www.googleapis.com/customsearch/v1?q=" + search_term + "&start=" + start_index + "&key=" + key + "&cx=" + cx + "&searchType=image" + "&fileType=png"
+	search_url = "https://www.googleapis.com/customsearch/v1?q=" + search_term + "&start=" + start_index + "&key=" + google_key + "&cx=" + google_cx + "&searchType=image" + "&fileType=png"
 	r = requests.get(search_url)
 	response = r.content.decode('utf-8')
 	result = json.loads(response)
@@ -451,6 +457,9 @@ if __name__ == '__main__':
 		config.read(config_file_path)
 		name = config.get('general', 'name')
 		owner = config.get('general', 'owner')
+		#Google API
+		google_key = 'AIzaSyAHiMIKRaDbsgKmkY8rNjenuD8oFXXR1ME'
+		google_cx = '000645986483467971235:czxngi_yt_q'
 		
 		print "    Name: " + name
 		print "    Owner: " + owner
