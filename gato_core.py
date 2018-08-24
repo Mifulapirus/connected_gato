@@ -1,6 +1,6 @@
 """
  Title: Connected Gato Core
- Description: This is the heart of your Connected Gato
+ Description: This is the heart of your Connected Gato.
 """ 
 __author__ = "Angel Hernandez"
 __contributors__ = "Angel Hernandez"
