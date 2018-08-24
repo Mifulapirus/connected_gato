@@ -41,6 +41,7 @@ import thingspeak_driver
 import telegram_driver
 import p2p_driver
 import ConfigParser
+import update_cat
 
 print str(datetime.datetime.now()) + "  Starting Connected Gato"
 
@@ -90,6 +91,7 @@ commands = {'commands': ['commands', 'command', '/command', '/commands'],
 			'set alarm': ['/set_alarm', 'set alarm', 'set the alarm for', 'wake me up at', 'wake up at'],
 			'check alarm': ['/check_alarm', 'check alarm', 'is there any alarm?', 'when are you waking up', 'when are you waking me up'],
 			'time': ['/time', 'time', "what's the time", "What time is it?"],
+			'update': ['/update'],
 			'trump': ['trump', '/trump', 'trump quote']}
 
 def on_chat_message(msg):
@@ -126,12 +128,12 @@ def process_command(msg):
 		telegram_send(chat_id, 'Here is the list of commands', keyboard)
 
 	elif message in commands['heartbeat']:
-			print "Do you want to see my heart beating?"
-			keyboard = InlineKeyboardMarkup(inline_keyboard=[
-					[InlineKeyboardButton(text='Yes', callback_data='set heartbeat = 1')],
-					[InlineKeyboardButton(text='No', callback_data='set heartbeat = 0')],])
+		print "Do you want to see my heart beating?"
+		keyboard = InlineKeyboardMarkup(inline_keyboard=[
+				[InlineKeyboardButton(text='Yes', callback_data='set heartbeat = 1')],
+				[InlineKeyboardButton(text='No', callback_data='set heartbeat = 0')],])
 
-			telegram_send(chat_id, 'Do you want to see my heart beating?', keyboard)
+		telegram_send(chat_id, 'Do you want to see my heart beating?', keyboard)
 
 	elif message in commands['color blocks']:
 		print "Set number of color blocks"
@@ -152,6 +154,11 @@ def process_command(msg):
 
 		telegram_send(chat_id, 'How bright shall I get?', keyboard)
 	
+	elif message in commands['update']:
+		print "Start Updating"
+		result = update_cat.update_firmware()
+		telegram_send(chat_id, str(result))
+
 	elif any(word in message for word in commands['set alarm']):
 		print "Setting up a wake up time"
 		global alarm_time
