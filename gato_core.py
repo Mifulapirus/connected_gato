@@ -1,84 +1,96 @@
 '''--------------------
 TODO:
-	Log the output of the script
 	Split it in different files
 	Fix the style
 	Send Angel who sent a message
 	Install Zerotier
+	Make it a hotspot
+	Add new Wifi on line 180 or so
 '''
 
 import sys
 from pprint import pprint
 import time
-import Adafruit_BMP.BMP085 as BMP085
-from neopixel import *
 import telepot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from PIL import Image, ImageDraw
 import urllib
 from random import randrange
-import requests
 import json
 import os.path
+import os
+import dateutil.tz
 import datetime
+import httplib
+import requests
+import BMP180
+import wifi_driver
+import led_driver
+import thingspeak_driver
+import telegram_driver
+import p2p_driver
+import ConfigParser
+
+
 
 print str(datetime.datetime.now()) + "  Starting Connected Gato"
+
+config_file_path = "/home/pi/connected_gato/connected_gato.conf"
 
 #Time Variables
 start_time = time.time()
 elapsed_time = 0
 
-
 SUCCESS = True
 FAIL = False
+
+thingspeak = thingspeak_driver.thingspeak_driver()
+thingspeak_delay = 60
+thingspeak_last_update = 0
 
 #Google API
 key = 'AIzaSyAHiMIKRaDbsgKmkY8rNjenuD8oFXXR1ME'
 cx = '000645986483467971235:czxngi_yt_q'
 
 # LED strip configuration:
-LED_COUNT      = 16      # Number of LED pixels.
-LED_PIN        = 18      # GPIO pin connected to the pixels (must support PWM!).
-LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
-LED_DMA        = 5       # DMA channel to use for generating signal (try 5)
-LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest
-LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
-LED_RED_CORRECTION 		= 0.95
-LED_GREEN_CORRECTION 	= 1
-LED_BLUE_CORRECTION 	= 0.85	
+strip = led_driver.led_driver()
 
-# Create NeoPixel object with appropriate configuration.
-strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
-simplified_color_blocks = 1
-current_brightness = 1
-current_r = 0
-current_g = 0
-current_b = 0
-
-#TelegramBot configuration: 
-TOKEN = '347872193:AAFnHVo3Qw0GZgshMLW30vBUlRklpbq0giY'	#gatogatobot
-#TOKEN = '377513945:AAHXHnH1jmDVtPvt1luhB0zSN1equJivY58'	#ConnectedYellowGatoBot
-OWNER_CHAT_ID = 17186779
+#TelegramBot configuration:
+telegram_bot = telegram_driver.telegram_driver()
+TOKEN = telegram_bot.token
+OWNER_CHAT_ID = telegram_bot.owner_id
+user_interactions = 0	#Number of user interactions to be updated on ThingSpeak
 
 #Pressure Sensor:
-sensor = BMP085.BMP085()
-standard_pressure = 0
-pressure_threshold = 50.0
-pressure_timer = 5*60
-pressure_last_update = 0
+pressure_sensor = BMP180.BMP180()
+
+#Wifi Stuff
+wifi_driver = wifi_driver.wifi_driver()
+wifi_setup_started = False
+
+#Alarm stuff
+global alarm_time
+alarm_time = None
 
 #Command List
 commands = {'commands': ['commands', 'command', '/command', '/commands'],
 			'google': ['look like', 'make it', 'make the cat'],
-			'color blocks': ['color blocks', 'simplify colors', '/colorblocks'], 
+			'color blocks': ['color blocks', 'simplify colors', '/colorblocks'],
+			'top': ['top', '/top', 'top ', '/top '],
+			'bottom': ['bottom', '/bottom', 'bot', '/bot', 'bottom ', '/bottom ', 'bot ', '/bot '], 
 			'brightness': ['brightness', '/brightness'],
-			'temperature': ['temperature', '/temperature', 'temp', '/temp']}
-
-color_list = {'white': [255, 255, 255] , 'red': [255, 0, 0], 'green': [0, 255, 0], 'blue': [0, 0, 255], 'off': [0, 0, 0,]}
-
+			'temperature': ['temperature', '/temperature', 'temp', '/temp'], 
+			'wifi': ['scan', 'connect', '/scan'], 
+			'heartbeat': ['/heartbeat', 'heartbeat'], 
+			'set alarm': ['/set_alarm', 'set alarm', 'set the alarm for', 'wake me up at', 'wake up at'],
+			'check alarm': ['/check_alarm', 'check alarm', 'is there any alarm?', 'when are you waking up', 'when are you waking me up'],
+			'time': ['/time', 'time', "what's the time", "What time is it?"],
+			'trump': ['trump', '/trump', 'trump quote']}
 
 def on_chat_message(msg):
+	global user_interactions
 	content_type, chat_type, chat_id = telepot.glance(msg)
+	user_interactions += 1
 
 	if content_type == 'text':
 		#convert to lowercase text
@@ -89,10 +101,12 @@ def on_chat_message(msg):
 		process_command(msg)
 
 def process_command(msg):
+	global wifi_setup_started
 	content_type, chat_type, chat_id = telepot.glance(msg)
 	print "Received Message: "
 	pprint(msg)
 	#Make it lowercase
+	original_msg = msg['text']
 	message = msg['text'].lower()
 
 	print message
@@ -105,7 +119,15 @@ def process_command(msg):
 			[InlineKeyboardButton(text='Green', callback_data='green')],
 			[InlineKeyboardButton(text='Blue', callback_data='blue')],
 			[InlineKeyboardButton(text='Off', callback_data='off')],])
-		bot.sendMessage(chat_id, 'Here is the list of commands', reply_markup=keyboard)
+		telegram_send(chat_id, 'Here is the list of commands', keyboard)
+
+	elif message in commands['heartbeat']:
+			print "Do you want to see my heart beating?"
+			keyboard = InlineKeyboardMarkup(inline_keyboard=[
+					[InlineKeyboardButton(text='Yes', callback_data='set heartbeat = 1')],
+					[InlineKeyboardButton(text='No', callback_data='set heartbeat = 0')],])
+
+			telegram_send(chat_id, 'Do you want to see my heart beating?', keyboard)
 
 	elif message in commands['color blocks']:
 		print "Set number of color blocks"
@@ -114,108 +136,206 @@ def process_command(msg):
 			[InlineKeyboardButton(text='2', callback_data='set simplified_color_blocks = 2')],
 			[InlineKeyboardButton(text='3', callback_data='set simplified_color_blocks = 3')],
 			[InlineKeyboardButton(text='4', callback_data='set simplified_color_blocks = 4')],])
-		bot.sendMessage(chat_id, 'How many block should I use?', reply_markup=keyboard)
+
+		telegram_send(chat_id, 'How many blocks should I use?', keyboard)
 	
 	elif message in commands['brightness']:
 		print "Set the brightness"
 		keyboard = InlineKeyboardMarkup(inline_keyboard=[
-			[InlineKeyboardButton(text='Low', callback_data='set brightness = 0.2')],
-			[InlineKeyboardButton(text='Medium', callback_data='set brightness = 0.5')],
+			[InlineKeyboardButton(text='Low', callback_data='set brightness = 0.05')],
+			[InlineKeyboardButton(text='Medium', callback_data='set brightness = 0.3')],
 			[InlineKeyboardButton(text='High', callback_data='set brightness = 1')],])
-		bot.sendMessage(chat_id, 'How bright shall I get?', reply_markup=keyboard)
+
+		telegram_send(chat_id, 'How bright shall I get?', keyboard)
+	
+	elif any(word in message for word in commands['set alarm']):
+		print "Setting up a wake up time"
+		global alarm_time
+
+		for known_term in commands['set alarm']:
+			print known_term
+			message = str(message.replace(known_term, ""))
+		message = message.replace(" ", "")
+
+		#Check if the remaining of the message is in time format
+		try:
+			time.strptime(message, '%H:%M')
+			print message
+			alarm_time = message
+			
+			telegram_send(chat_id, 'It is ' + time.strftime("%H:%M", time.localtime()))
+			telegram_send(chat_id, 'I will light up at ' + alarm_time)
+			
+		
+		except ValueError:
+			telegram_send(chat_id, 'Sorry, can you send me the time in HH:MM format, please?\n I got ' + message)
+			alarm_time = None
+			return False
+			
+	elif any(word in message for word in commands['check alarm']):
+		print "Checking Alarm"
+		global alarm_time
+		if alarm_time == None:
+			telegram_send(chat_id, "I don't have any alarm set right now. Send me any of the following commands to set up an alarm: \n" + str(commands['check alarm']))
+		else:
+			telegram_send(chat_id, 'I have an alarm set at ' + str(alarm_time))
+		
+		
+	elif any(word in message for word in commands['time']):
+		print "Timer Requested"
+		telegram_send(chat_id, "It's " + time.strftime("%H:%M", time.localtime()))
+		
+	elif message in commands['wifi']:
+		if message == 'scan':
+			wifi_list = wifi_driver.scann_wifi()			
+			i = 0
+			_inline_keyboard=[]
+			for i, ap in enumerate(wifi_list):
+				print str(i) + ". " + str(ap)
+				_inline_keyboard.append([InlineKeyboardButton(text = str(i) + " " + str(ap.ssid) + " " + str(ap.signal), callback_data=str('wifi_id = ' + str(i)))])
+			
+			keyboard = InlineKeyboardMarkup(inline_keyboard=_inline_keyboard)
+			telegram_send(chat_id, "Here are the WiFis I can see: ", keyboard)
 
 	elif message in commands['temperature']:
-		bot.sendMessage(chat_id, "It's " + str(get_temperature()) + " degrees")
+		telegram_send(chat_id, "It's " + str(pressure_sensor.get_temperature()) + " degrees")
 
+	elif any(word in message for word in commands['top']):
+		for known_term in commands['top']:
+			message = str(message.replace(known_term, ""))
+
+		message = message.replace(" ", "")
+
+		print "Resulting Color: " + str(message)
+
+		red_channel = int(strip.color_list[message][0])
+		green_channel = int(strip.color_list[message][1])
+		blue_channel = int(strip.color_list[message][2])
+		strip.wipe_top(red_channel, green_channel, blue_channel)
+
+		print "Top part is now " + message
+		telegram_send(chat_id, 'Connected gato is half ' + message)
+
+	elif any(word in message for word in commands['bottom']):
+		for known_term in commands['bottom']:
+			message = str(message.replace(known_term, ""))
+
+		message = message.replace(" ", "")
+
+		print "Resulting Color: " + str(message)
+
+		red_channel = int(strip.color_list[message][0])
+		green_channel = int(strip.color_list[message][1])
+		blue_channel = int(strip.color_list[message][2])
+		strip.wipe_bottom(red_channel, green_channel, blue_channel)
+
+		print "Bottom part is now " + message
+		telegram_send(chat_id, 'Connected gato is half ' + message)
 
 	elif any(word in message for word in commands['google']):
 		google_color(chat_id, message)
+	
+	elif any(word in message for word in commands['trump']):
+		hair = [0, 0, 0]
+		face = [255, 120, 2]
+		jacket = [0, 0, 60]
+		jacket_intense = [0, 0, 160]
+		shirt = [70, 70, 70]
+		tie = [70, 0, 0]
+		no_color = [0,0,0]
+		trump_leds = [hair, hair, no_color, 
+                              no_color, face, face, face, face, face, face, no_color,
+			      no_color, no_color, no_color, no_color, hair, 
+			      jacket, jacket, jacket, jacket, jacket_intense, jacket_intense, 
+			      shirt, 
+			      tie, tie,
+			      shirt, 
+			      jacket_intense, jacket_intense, jacket, jacket, jacket]			      
 
-	elif any(word in message for word in color_list):
-		matching_color = [s for s in color_list if message in s]
+		fade = 1
+                for j in range(0, len(trump_leds)-1):
+			strip.set_single_led(j, trump_leds[j][0]*fade, trump_leds[j][1]*fade, trump_leds[j][2]*fade)
+                        strip.show()
+
+
+		url = "https://api.whatdoestrumpthink.com/api/v1/quotes/random"
+		resp = requests.get(url=url, params=dict())
+		pprint(resp)
+		data = json.loads(resp.text)
+		pprint(data)
+		telegram_send(chat_id, data["message"])
+
+	elif any(word in message for word in strip.color_list):
+		matching_color = [s for s in strip.color_list if message in s]
 		print matching_color 
 		process_color_name(strip, message)
 		print "Ok, connected Gato is now " + message
-		bot.sendMessage(chat_id, 'Connected gato is now ' + message)
-
+		telegram_send(chat_id, 'Connected gato is now ' + message)
 
 	else:
-		bot.sendMessage(chat_id, 'Sorry, no entendi')
+		if wifi_setup_started == True:
+			print "Wifi Password: " + original_msg
+			wifi_driver.connect_wifi(original_msg)
+			wifi_setup_started = False
+
+		#else:
+		#	telegram_send(chat_id, 'Sorry, no entendi')
 
 def on_callback_query(msg):
+	global wifi_setup_started
+	global user_interactions
+	user_interactions += 1
 	query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
-	#print('Callback Query:', query_id, from_id, query_data)
 	
-	if query_data in color_list:
+	if query_data in strip.color_list:
 		print query_data + " it's a color"
 		process_color_name(strip, query_data)
 		bot.answerCallbackQuery(query_id, text="Connected Gato is now " + query_data)
 
 	if "set simplified_color_blocks = " in query_data:
 		print "Change number of simplified blocks"
-		global simplified_color_blocks 
-		simplified_color_blocks = int(str(query_data.replace("set simplified_color_blocks = ", "")))
-		print "  New number of blocks: " + str(simplified_color_blocks)
-		bot.answerCallbackQuery(query_id, text="I will use " + str(simplified_color_blocks) + " LED blocks")
+		strip.simplified_color_blocks = int(str(query_data.replace("set simplified_color_blocks = ", "")))
+		print "  New number of blocks: " + str(strip.simplified_color_blocks)
+		#bot.answerCallbackQuery(from_id, text="I will use " + str(strip.simplified_color_blocks) + " LED blocks")
+		bot.answerCallbackQuery(query_id, text="I will use " + str(strip.simplified_color_blocks) + " LED blocks")
 
 	elif "set brightness = " in query_data:
 		print "Set a new brightness value"
-		global current_brightness 
-		current_brightness = float(str(query_data.replace("set brightness = ", "")))
-		print "  New brightness level: " + str(current_brightness)
-		bot.answerCallbackQuery(query_id, text="My brightness level is now " + str(current_brightness*100) + "%")
+		strip.current_brightness = float(str(query_data.replace("set brightness = ", "")))
+		print "  New brightness level: " + str(strip.current_brightness)
+		bot.answerCallbackQuery(query_id, text=("My brightness level is now " + str(strip.current_brightness*100) + "%"))
+
+	elif "wifi_id = " in query_data:
+		wifi_id = int(str(query_data.replace("wifi_id = ", "")))
+		#print wifi_driver.Cell.all('wlan0')[wifi_id]
+		_ssid = wifi_driver.cell[wifi_id].ssid
+		wifi_driver.current_ssid = _ssid
+		wifi_setup_started = True
+		bot.answerCallbackQuery(query_id, text=("What's the password for " + str(_ssid) + "?"))
+	
+	elif "set heartbeat = " in query_data:
+		print "Set heartbeat"
+                #print(query_data.replace("set heartbeat = ", ""))
+                strip.set_heartbeat(bool(int(query_data.replace("set heartbeat = ", ""))))
+                print "  Heartbeat is now " + str(strip.heartbeat_enabled)
+                bot.answerCallbackQuery(query_id, text=("Heartbeat is now " + str(strip.heartbeat_enabled)))
 
 def process_color_name(strip, color_name):
-	print "Turning " + str(color_list[color_name])
-	red_channel = int(color_list[color_name][0])
-	green_channel = int(color_list[color_name][1])
-	blue_channel = int(color_list[color_name][2])
+	print "Turning " + str(strip.color_list[color_name])
+	red_channel = int(strip.color_list[color_name][0])
+	green_channel = int(strip.color_list[color_name][1])
+	blue_channel = int(strip.color_list[color_name][2])
 
-	set_all_leds(red_channel, green_channel, blue_channel)
-
-def colorWipe(strip, color, wait_ms=20):
-	#Wipe color across display a pixel at a time
-	for i in range(strip.numPixels()+1):
-		strip.setPixelColor(i, color)
-		strip.show()
-		time.sleep(wait_ms/1000.0)
-
-def set_single_led(led_number, r, g, b, brightness=current_brightness, override=True):
-	global current_brightness
-	global current_r
-	global current_g
-	global current_b
-	brightness = current_brightness
-
-	#print "Current brightness: " + str(brightness)
-	
-	red_channel = int(r*LED_RED_CORRECTION*brightness)
-	green_channel = int(g*LED_GREEN_CORRECTION*brightness)
-	blue_channel = int(b*LED_BLUE_CORRECTION*brightness)
-
-	#print "  R: " + str(red_channel)
-	#print "  G: " + str(green_channel)
-	#print "  B: " + str(blue_channel)
-	if override == True:
-		current_r = red_channel
-		current_g = green_channel
-		current_b = blue_channel
-
-	strip.setPixelColor(led_number, Color(green_channel, red_channel, blue_channel))
-	strip.show()
-	
-def set_all_leds(r, g, b, brightness=current_brightness, override=True):
-	for i in range(strip.numPixels()+1):
-		set_single_led(i, r, g, b, brightness, override)
+	strip.set_all_leds(red_channel, green_channel, blue_channel)
 
 def google_color(chat_id, message):
 	for known_term in commands['google']:
-			search_term = str(message.replace(known_term, ""))
+		search_term = str(message.replace(known_term, ""))
 		
 	print search_term
 	start_index = '1'
 
-	bot.sendMessage(chat_id, 'Let me see what I can find for ' + search_term)
+	telegram_send(chat_id, 'Let me see what I can find for ' + search_term)
 
 	search_url = "https://www.googleapis.com/customsearch/v1?q=" + search_term + "&start=" + start_index + "&key=" + key + "&cx=" + cx + "&searchType=image" + "&fileType=png"
 	r = requests.get(search_url)
@@ -234,7 +354,7 @@ def google_color(chat_id, message):
 				
 				os.path.isfile('img.png')
 				print "Image has been created"
-				if get_image_colors('img.png', 'img2.png', simplified_color_blocks):
+				if get_image_colors('img.png', 'img2.png', strip.simplified_color_blocks):
 					img = open('img.png', 'rb')
 					img2 = open('img2.png', 'rb')
 					bot.sendPhoto(chat_id, img, caption="Here is what I found for" + search_term)
@@ -245,7 +365,7 @@ def google_color(chat_id, message):
 					break
 				
 				else:
-					bot.sendMessage(chat_id, "I found an image, but it didn't work very well, let me try again (" + str(i+1) + " out of 5 tries)")
+					telegram_send(chat_id, "I found an image, but it didn't work very well, let me try again (" + str(i+1) + " out of 5 tries)")
 
 			except Exception as err:
 				print "Image not downloaded %s" % err
@@ -255,13 +375,13 @@ def google_color(chat_id, message):
 		print r.status_code
 		#pprint(response)
 
-def get_image_colors(infile, outfile, numcolors=simplified_color_blocks, swatchsize=20, resize=150):
+def get_image_colors(infile, outfile, numcolors=strip.simplified_color_blocks, swatchsize=20, resize=150):
 	try:
 		image = Image.open(infile)
 		image = image.resize((resize, resize))
 		#result = image.convert('P', palette=Image.ADAPTIVE, colors=numcolors)
 		
-		result = image.quantize(colors=simplified_color_blocks)
+		result = image.quantize(colors=strip.simplified_color_blocks)
 		result.putalpha(0)
 		colors = result.getcolors(resize*resize)
 		#colors = result.getcolors(16)
@@ -272,7 +392,6 @@ def get_image_colors(infile, outfile, numcolors=simplified_color_blocks, swatchs
 			numcolors = len(colors)
 
 		#print "Resulting colors: "
-		#pprint(colors)
 		LED_per_color = strip.numPixels()/numcolors
 
 		print "Simplified " + str(numcolors) + " color blocks:"
@@ -284,7 +403,8 @@ def get_image_colors(infile, outfile, numcolors=simplified_color_blocks, swatchs
 			print "Block " + str(i) + ": " + str(r) + " ," + str(g) + " ," + str(b)
 
 			for j in range((i*LED_per_color), (i*LED_per_color)+LED_per_color):
-				set_single_led(j, r, g, b)
+				strip.set_single_led(j, r, g, b)
+				strip.show()
 				
 		# Save colors to file
 		pal = Image.new('RGB', (swatchsize*numcolors, swatchsize))
@@ -301,54 +421,53 @@ def get_image_colors(infile, outfile, numcolors=simplified_color_blocks, swatchs
 
 	except Exception as err:
 		print "ERROR: Can't open " + str(infile)
+		print err
 		return FAIL
 
-def get_pressure(samples = 10):
-	cumulative_pressure = 0.0
-	for i in range(0, samples):
-		cumulative_pressure += sensor.read_pressure()
-	
-	current_pressure = cumulative_pressure/samples
-	#print "Current Pressure: " + str(current_pressure)
-	return current_pressure
+def telegram_send(chat_id, text, markup = ""):
+	print "Sending message to " + str(chat_id)
+	print text
+	#pprint(markup)
+	print "---------------------"
+	try:
+		bot.sendMessage(chat_id, text, reply_markup=markup)
+		return SUCCESS
 
-def get_temperature(samples = 1):
-	cumulative_temp = 0.0
-	for i in range(0, samples):
-		_current_temp = sensor.read_temperature()
-		cumulative_temp += _current_temp
-		print " Temp " + str(i) + ": " + str(_current_temp) + " --> " + str(cumulative_temp)
-		time.sleep(0.01)
-	
-	print " Cumulative = " + str(cumulative_temp)
-	print " Samples =    " + str(samples)
-	current_temp = cumulative_temp/samples
-	#print "Current Pressure: " + str(current_pressure)
-	return current_temp
+	except Exception as err:
+		print "ERROR sending telegram message: "
+		print err
+		return FAIL
 
-def get_ambient_pressure():
-	global standard_pressure
-	global _min_pressure_threshold
-	global _max_pressure_threshold
-
-	standard_pressure = get_pressure(10)
-	_min_pressure_threshold = int(standard_pressure - pressure_threshold)
-	_max_pressure_threshold = int(standard_pressure + pressure_threshold)
-	
-	print str(datetime.datetime.now()) + "  Reading initial pressure..."
-	print str(datetime.datetime.now()) + "    Current Pressure: " + str(standard_pressure)
-	print str(datetime.datetime.now()) + "    Threshold:        " + str(pressure_threshold)
-	print str(datetime.datetime.now()) + "    Min Threshold:    " + str(_min_pressure_threshold)
-	print str(datetime.datetime.now()) + "    Max Threshold:    " + str(_max_pressure_threshold)
-
+		
+alarm_time = None
 
 if __name__ == '__main__':
-	print "----------------------------"
-	print "|     Connected Gato       |"
-	print "----------------------------"
+	print "-------------------------------"
+	print "|     Connected Gato 0.2      |"
+	print "-------------------------------"
+	print "  Reading configuration file: " + config_file_path
+	try:
+		config = ConfigParser.RawConfigParser()   
+		config.read(config_file_path)
+		name = config.get('general', 'name')
+		owner = config.get('general', 'owner')
+		
+		print "    Name: " + name
+		print "    Owner: " + owner
 
+	except Exception as err:
+		print "ERROR reading " + config_file_path
+		print err
+
+	print str(datetime.datetime.now()) + "  Setting up the Timezone"
+	#localtz = dateutil.tz.tzlocal()
+	#print localtz
+	#os.environ['TZ'] = localtz.tzname(datetime.datetime.now(localtz))
+	#print os.environ['TZ']
+	#time.tzset()
+	#print "It is " + str(datetime.datetime.now())
+	
 	print str(datetime.datetime.now()) + "  Starting LED strip..."
-	strip.begin()
 	print str(datetime.datetime.now()) + "    ... Done"
 
 	print str(datetime.datetime.now()) + "  Starting Telegram Bot"
@@ -356,51 +475,90 @@ if __name__ == '__main__':
 	bot.message_loop({'chat': on_chat_message, 'callback_query': on_callback_query})	
 	print str(datetime.datetime.now()) + "    ... Done"
 	
-	print str(datetime.datetime.now()) + "  Temperature: " + str(get_temperature())
+	print str(datetime.datetime.now()) + "  Starting P2P driver to connect to the paired cat"
+	#Paired cat
+	p2p = p2p_driver.p2p_driver()
+	p2p.send_message("Hello from " + owner)
+
+	print str(datetime.datetime.now()) + "  Temperature: " + str(pressure_sensor.get_temperature())
 	print str(datetime.datetime.now()) + "  Your Connected Gato is now listening"
 	#Text Angel when Connected gato is ready
-	bot.sendMessage(OWNER_CHAT_ID, "I'm up! It's like " + str(get_temperature()) + " degrees in here!")
-	colorWipe(strip, Color(0, 0, 255))  # Blue wipe GRB
-	colorWipe(strip, Color(0, 0, 0))  # Off wipe
+	telegram_send(OWNER_CHAT_ID, "I'm up! It's like " + str(pressure_sensor.get_temperature()) + " degrees in here!")
+	strip.colorWipe(0, 0, 255)  # Blue wipe GRB
+	strip.colorWipe(0, 0, 0)  # Off wipe
 
 	# Keep the program running.
-	_min_pressure_delta = 0.0
-	_pressure_delta = 0.0
-	_100_division = 0.0
-	_compressing = False
-	_decompressing = False
+	user_interactions = 0
+	squishing_interactions = 0
+
+
+	_previous_compression_state = "stable"
 
 	while 1:
-		_current_pressure = get_pressure(5)
-		_pressure_delta = standard_pressure - _current_pressure
-		
-		if pressure_last_update < (time.time() - pressure_timer):
-			print "Time to update the pressure"
-			get_ambient_pressure()
-			pressure_last_update = time.time()
-			print "  Next pressure update in " + str((pressure_timer)/60) + " minutes" 
+		try:
+			if p2p.received_compression:
+				p2p.received_compression = False
+				print "Paired cat has been squished"
+				strip.colorWipe(0, 0, 255)  # blue wipe GRB
+				strip.colorWipe(0, 0, 0)  # Off wipe
+				telegram_send(OWNER_CHAT_ID, "Your paired cat has been squished")
+				strip.colorWipe(strip.current_g, strip.current_r, strip.current_b)  # Blue wipe GRB
 
-		if (_min_pressure_threshold < _current_pressure < _max_pressure_threshold):
-			if _decompressing == True:
-				_min_pressure_delta = 0.0
-				_decompressing = False
+			if thingspeak_last_update < (time.time() - thingspeak_delay):
+				print "Updating Thingspeak"
+				thingspeak.thingspeakUpdate({"field1": squishing_interactions, "field2": pressure_sensor.current_pressure, "field3": pressure_sensor.get_temperature(), 'field4': user_interactions})
+				user_interactions = 0
+				squishing_interactions = 0
+				thingspeak_last_update = time.time()
 
-				colorWipe(strip, Color(255, 0, 0))  # Blue wipe GRB
-				colorWipe(strip, Color(0, 0, 0))  # Off wipe
-				bot.sendMessage(OWNER_CHAT_ID, "I've just been squished")
-				colorWipe(strip, Color(current_g, current_r, current_b))  # Blue wipe GRB
+			_current_compression_state = pressure_sensor.current_compressiong_state
 
-		elif _current_pressure < _max_pressure_threshold:
-			print "Decompressing: " + str(_pressure_delta)
-			if _compressing == True:
-				_compressing = False
-				_decompressing = True
-				colorWipe(strip, Color(255, 255, 0))  # Blue wipe GRB
+			if alarm_time != None:
+				if alarm_time == str(time.strftime("%H:%M", time.localtime())):
+					print "ALARM!"
+					strip.colorWipe(245, 208, 76)  # Yellow wipe GRB
+					telegram_send(OWNER_CHAT_ID, 'WAKE UP!!!!!')
 
-		else:
-			print "Compressing: " + str(_pressure_delta)
-			_compressing = True
-			set_all_leds(255, 0, 0, 1, False)	
+					alarm_time = None
 
+				
+				
+			if _current_compression_state != _previous_compression_state:
+				print "Pressure changed to " + _current_compression_state
 
-		
+				if pressure_sensor.current_compressiong_state == "compressing":
+					#print "compressing"
+					squishing_interactions += 1
+					strip.set_all_leds(255, 0, 0, strip.current_brightness, False)	
+					_previous_compression_state = _current_compression_state
+
+				
+				elif pressure_sensor.current_compressiong_state == "decompressing":
+					#print "decompressing"
+					strip.colorWipe(255, 255, 0)  # Yellow wipe GRB
+					_previous_compression_state = _current_compression_state
+
+					
+				elif pressure_sensor.current_compressiong_state == "stable":
+					#print "decompressed"
+					strip.colorWipe(0, 255, 0)  # Green wipe GRB
+					strip.colorWipe(0, 0, 0)  # Off wipe
+					telegram_send(OWNER_CHAT_ID, "I've just been squished")
+					p2p.send_message(owner + "'s cat has been compressed")
+					strip.colorWipe(strip.current_g, strip.current_r, strip.current_b)  # Blue wipe GRB
+					_previous_compression_state = _current_compression_state
+
+				elif pressure_sensor.current_compressiong_state == "calibrated":
+					#print "calibrated"
+					pressure_sensor.ambient_pressure
+					telegram_send(OWNER_CHAT_ID, ("Calibrated to " + str(pressure_sensor.ambient_pressure) + "Pa"))
+					_previous_compression_state = "stable" #This avoids triggering the "stable" state
+					
+				else:
+					print "Unknown compression state"
+			
+			time.sleep(0.01)
+			
+		except KeyboardInterrupt:
+			print "Connected Gato is sad and letting you go... :("
+			sys.exit()

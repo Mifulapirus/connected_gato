@@ -1,0 +1,51 @@
+#General Section
+[general]
+name = Connected Gato
+owner = NAME OF THE OWNER
+
+# Telegram Section
+[telegram]
+#Bot Token
+token = 246010000:TokenYouGotFromTelegram
+#ID of the Owner or Administrator
+owner_id = 24601000 
+
+#Cat-Cat communication interface
+[socket]
+#IP and port of the interface being used
+own_ip = 192.168.0.2
+own_port = 10000
+
+#IP of your paired cat
+paired_ip = 192.168.0.3
+paired_port = 10000
+
+#Thing Speak section
+[thingspeak]
+key = 24601ABCDEF24601
+
+#Pressure settings
+[pressure]
+#Threshold at whitch the cat will detect to be squished
+pressure_threshold = 600
+#Ambient pressure thresholds.
+#These are the minimum and maximum limits in which the pressure can change for environmental reasons
+ambient_pressure_threshold = 50
+ambient_pressure_threshold_max = 100
+#How often are we gonna check the pressure
+pressure_timer = 300
+
+#LED Section
+[led]
+#What is the connection order? 
+#If you've connected Cat-Top-Bottom = False
+#If you've connected Cat-Bottom-Top = True
+reverse_top_bot = False
+
+#How many LEDs are in each section?
+top_led_count = 16
+bot_led_count = 15
+
+#Where do you want the heart to be?
+heart_led = 16
+heartbeat_intensity = 50

@@ -11,6 +11,24 @@ Libraries used:
 
 Installation:
 -------------
+0. Update your raspberry
+sudo apt-get update
+
+1. Install various packages 
+sudo apt-get install build-essential python-dev git scons swig python-smbus
+
+2. Install ZeroTier
+2.1 clone the git repo
+git clone https://github.com/zerotier/ZeroTierOne.git
+2.2 Build ZeroTier
+cd ZeroTierOne
+sudo make
+2.3 Wait until the build is completed. It will take few minutes.
+2.4 Copy the service file: $ sudo cp /YOUR_ZERO_TIER_FOLDER/debian/zerotier-one.service /lib/systemd/system/
+2.5 Change permissions: $ sudo chmod 644 /lib/systemd/system/zerotier-one.service
+2.6 Reload services: $ sudo systemctl daemon-reload
+2.7 Start the service: $ sudo systemctl start zerotier-one.service
+
 1. Make the work directory
 mkdir connected_gato
 
@@ -19,8 +37,6 @@ git clone https://github.com/Mifulapirus/connected_gato.git
 
 3. Install the LED strip library:
 cd ~/connected_gato
-sudo apt-get update
-sudo apt-get install build-essential python-dev git scons swig
 git clone https://github.com/jgarff/rpi_ws281x.git
 cd rpi_ws281x
 scons
@@ -35,13 +51,19 @@ sudo nano /etc/modprobe.d/snd-blacklist.conf
 blacklist snd_bcm2835
 
 5. Install PIL library
+sudo pip install pillow==2.9.0
 
 6. Install Telepot (Telegram Bot) library
-pip install telepot
+sudo pip install telepot
 
+7. Install Requests
+sudo pip install requests
+9. Install the BMP180 library
+git clone https://github.com/adafruit/Adafruit_Python_BMP.git
+sudo python ~/connected_gato/Adafruit_Python_BMP/setup.py install
 
-7. Install ZeroTier
-curl -s https://install.zerotier.com/ | sudo bash
+10. Install the WiFi library
+sudo pip install wifi
 
 8. Create the upstart job on Jessie: http://www.raspberrypi-spy.co.uk/2015/10/how-to-autorun-a-python-script-on-boot-using-systemd/
 sudo nano /lib/systemd/system/gato-core.service
@@ -57,13 +79,7 @@ sudo nano /lib/systemd/system/gato-core.service
 	[Install]
 	WantedBy=multi-user.target
 
-sudo chmod 644 /lib/systemd/system/gato_core.service
+sudo chmod 644 /lib/systemd/system/gato-core.service
 sudo systemctl daemon-reload
 sudo systemctl enable gato-core.service
-
-9. Install the BMP180 library
-sudo apt-get install python-smbus
-git clone https://github.com/adafruit/Adafruit_Python_BMP.git
-9.1 Test it
-	cd Adafruit_Python_BMP
-	sudo python setup.py install
+sudo systemctl start gato-core.service
