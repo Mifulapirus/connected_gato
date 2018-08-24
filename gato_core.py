@@ -42,6 +42,7 @@ import telegram_driver
 import p2p_driver
 import ConfigParser
 import update_cat
+import psutil
 
 print str(datetime.datetime.now()) + "  Starting Connected Gato"
 
@@ -106,6 +107,19 @@ def on_chat_message(msg):
 		print "Message content:         " + msg['text']
 		process_command(msg)
 
+def restart_gato_core():
+	#Restarts the current program, with file objects and descriptors cleanup
+    
+	try:
+		p = psutil.Process(os.getpid())
+		for handler in p.get_open_files() + p.connections():
+			os.close(handler.fd)
+	except Exception, e:
+		print e
+
+	python = sys.executable
+	os.execl(python, python, *sys.argv)
+	
 def process_command(msg):
 	global wifi_setup_started
 	content_type, chat_type, chat_id = telepot.glance(msg)
@@ -157,7 +171,13 @@ def process_command(msg):
 	elif message in commands['update']:
 		print "Start Updating"
 		result = update_cat.update_firmware()
-		telegram_send(chat_id, str(result))
+		if result == "Already up-to-date.":
+			telegram_send(chat_id, "I'm already up to date... I like that you keep an eye on my health!")
+		else:
+			telegram_send(chat_id, "I have been updated.\n Here is the result:")
+			telegram_send(chat_id, str(result))
+			telegram_send(chat_id, "I'm gonna restart now... see you in a minute!")
+			restart_gato_core()
 
 	elif any(word in message for word in commands['set alarm']):
 		print "Setting up a wake up time"
