@@ -90,7 +90,6 @@ class p2p_driver:
 			finally:
 				self.client_sock.close()
 
-
 	def sock_listener(self):
 		while True:
 			try:
