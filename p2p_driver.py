@@ -55,20 +55,23 @@ class p2p_driver:
 				
 		print "P2P: Starting Cat to Cat connection on " + str(self.own_ip) + " port " + str(self.own_port)
 		
-		try:
-			self.server_sock.bind((self.own_ip, self.own_port))
+		connected = False
+		while connected == False:
+			try:
+				self.server_sock.bind((self.own_ip, self.own_port))
 
-			# Listen for incoming connections
-			self.server_sock.listen(1)
+				# Listen for incoming connections
+				self.server_sock.listen(1)
 
-			self.sock_listener_thread = threading.Thread(target=self.sock_listener)
-			self.sock_listener_thread.daemon = True
-			self.sock_listener_thread.start()
-			
-		except socket.error as e:
-			print "P2P: Server Binding Error. Port is already in use"
-		
-			
+				self.sock_listener_thread = threading.Thread(target=self.sock_listener)
+				self.sock_listener_thread.daemon = True
+				self.sock_listener_thread.start()
+				connected = True
+				
+			except socket.error as e:
+				print "P2P: Server Binding Error. Port is already in use"
+				connected = False
+				time.sleep(5)
 
 	def send_message(self, msg=""):
 		sender_thread = threading.Thread(target=self.sender, args=(msg,))
