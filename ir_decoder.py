@@ -1,3 +1,16 @@
+"""
+ Title: IR decoder driver
+ Description: checks for new IR signals and starts decoding the message following the standard NEC Protocol
+ References: https://www.sbprojects.net/knowledge/ir/nec.php
+ """ 
+__author__ = "Angel Hernandez"
+__contributors__ = "Angel Hernandez"
+__license__ = "GPL"
+__version__ = "0.1"
+__maintainer__ = "Angel Hernandez"
+__email__ = "angel@tupperbot.com"
+__status__ = "beta"
+
 import RPi.GPIO as GPIO
 import time
 import sys
