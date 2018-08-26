@@ -112,11 +112,6 @@ class p2p_driver:
 				print "P2P: Exiting socket listener reading loop."
 				sys.exit()
 			
-			finally:
-				print("P2P: Unexpected error")
-				self.client_sock.close()
-				del self
-				sys.exit()
 			
 if __name__ == '__main__':
 	print "P2P: Socket connection test"
