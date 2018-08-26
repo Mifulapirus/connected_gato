@@ -21,10 +21,9 @@ config_file_path = "/home/pi/connected_gato/connected_gato.conf"
 
 class p2p_driver:
 	def __init__(self):
-		print ""
-		print "Starting p2p driver"
+		print "P2P: Starting p2p driver"
 
-		print "  Reading config. file: " + config_file_path
+		print "P2P:   Reading config. file: " + config_file_path
 		try:
 			config = ConfigParser.RawConfigParser()   
 			config.read(config_file_path)
@@ -34,13 +33,13 @@ class p2p_driver:
 			self.paired_ip = config.get('socket', 'paired_ip')
 			self.received_compression = False
 			
-			print "    Own IP: " + self.own_ip
-			print "    Own Port: " + str(self.own_port)
-			print "    Paired IP: " + self.paired_ip
-			print "    Paired Port: " + str(self.paired_port)
+			print "P2P:     Own IP: " + self.own_ip
+			print "P2P:     Own Port: " + str(self.own_port)
+			print "P2P:     Paired IP: " + self.paired_ip
+			print "P2P:     Paired Port: " + str(self.paired_port)
 			
 		except Exception as err:
-			print "ERROR reading " + config_file_path
+			print "P2P: ERROR reading " + config_file_path
 			print err
 
 		self.create_server()
@@ -54,7 +53,7 @@ class p2p_driver:
 		# Create a TCP/IP socket
 		self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				
-		print "Starting Cat to Cat connection on " + str(self.own_ip) + " port " + str(self.own_port)
+		print "P2P: Starting Cat to Cat connection on " + str(self.own_ip) + " port " + str(self.own_port)
 		
 		try:
 			self.server_sock.bind((self.own_ip, self.own_port))
@@ -78,14 +77,14 @@ class p2p_driver:
 
 	def sender(self, msg=""):
 		client_connected = False
-		print "Sending: " + msg
+		print "P2P: Sending: " + msg
 		while (client_connected == False):
 			try:
 				# Create a TCP/IP socket
 				self.client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 				# Connect the socket to the port where the server is listening
-				print "Connecting to Paired cat on " + str(self.paired_ip) + " port " + str(self.paired_port)
+				print "P2P: Connecting to Paired cat on " + str(self.paired_ip) + " port " + str(self.paired_port)
 
 				self.client_sock.connect((self.paired_ip, self.paired_port))
 
@@ -94,7 +93,7 @@ class p2p_driver:
 
 			except Exception as err:
 				time.sleep(5)
-				print "ERROR client not ready "
+				print "P2P: ERROR client not ready "
 				print err
 			
 
@@ -102,15 +101,15 @@ class p2p_driver:
 		while True:
 			try:
 				# Wait for a connection
-				print "Waiting for new connection"
+				print "P2P: Waiting for new connection"
 				connection, client_address = self.server_sock.accept()
 				data = connection.recv(1000)
-				print 'received "%s"' % data
+				print "P2P: received '%s'" % data
 				#self.send_message(data)
 				self.received_compression = True
 
 			except KeyboardInterrupt:
-				print "Exiting socket listener reading loop."
+				print "P2P: Exiting socket listener reading loop."
 				sys.exit()
 			
 			finally:
@@ -120,9 +119,9 @@ class p2p_driver:
 				sys.exit()
 			
 if __name__ == '__main__':
-	print "Socket connection test"
+	print "P2P: Socket connection test"
 	p2p = p2p_driver()
 	
 	while True:
-		p2p.send_message("Hola from " + str(p2p.own_ip))
+		p2p.send_message("P2P: Hola from " + str(p2p.own_ip))
 		time.sleep(1)
