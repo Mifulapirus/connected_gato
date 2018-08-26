@@ -96,6 +96,8 @@ commands = {'commands': ['commands', 'command', '/command', '/commands'],
 			'check alarm': ['/check_alarm', 'check alarm', 'is there any alarm?', 'when are you waking up', 'when are you waking me up'],
 			'time': ['/time', 'time', "what's the time", "What time is it?"],
 			'update': ['/update'],
+			'restart': ['/restart'],
+			
 			'trump': ['trump', '/trump', 'trump quote']}
 
 def on_chat_message(msg):
@@ -124,7 +126,7 @@ def restart_gato_core():
 	os.execl(python, python, *sys.argv)'''
 	
 	#this seems to work, but I need to clean up all objects
-	#os.execv('/home/pi/connected_gato/gato_core.py', [''])  
+	os.execv('/home/pi/connected_gato/gato_core.py', [''])  
 	print "Can't reboot by myself yet"
 	
 	
@@ -181,13 +183,17 @@ def process_command(msg):
 		result = update_cat.update_firmware()
 		if result == "Already up-to-date.":
 			telegram_send(chat_id, "I'm already up to date... I like that you keep an eye on my health!")
-			print "Restarting anyway"
-			restart_gato_core()
+
 		else:
 			telegram_send(chat_id, "I have been updated.\n Here is the result:")
 			telegram_send(chat_id, str(result))
 			telegram_send(chat_id, "I'm gonna restart now... see you in a minute!")
 			restart_gato_core()
+
+	elif message in commands['restart']:
+			telegram_send(chat_id, "You want me to restart, so I'm gonna do it now... see you in a bit!")
+			restart_gato_core()
+
 
 	elif any(word in message for word in commands['set alarm']):
 		print "Setting up a wake up time"
@@ -495,11 +501,6 @@ if __name__ == '__main__':
 		print "ERROR reading " + config_file_path
 		print err
 
-	print str(datetime.datetime.now()) + "  Setting up the Timezone"
-	
-	print str(datetime.datetime.now()) + "  Starting LED strip..."
-	print str(datetime.datetime.now()) + "    ... Done"
-
 	print str(datetime.datetime.now()) + "  Starting Telegram Bot"
 	bot = telepot.Bot(TOKEN)
 	bot.message_loop({'chat': on_chat_message, 'callback_query': on_callback_query})	
@@ -524,7 +525,7 @@ if __name__ == '__main__':
 
 	_previous_compression_state = "stable"
 
-	while 1:
+	while True:
 		try:
 			if p2p.received_compression:
 				p2p.received_compression = False
@@ -588,4 +589,13 @@ if __name__ == '__main__':
 			
 		except KeyboardInterrupt:
 			print "Connected Gato is sad and letting you go... :("
+			del strip
+			del p2p
+			del bot
+			del pressure_sensor
+			time.sleep(5)
 			sys.exit()
+		
+		#finally:
+		#	print "Connected Gato has died abruptly"
+		#	sys.exit()

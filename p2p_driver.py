@@ -45,21 +45,31 @@ class p2p_driver:
 
 		self.create_server()
 
-
+	def __del__(self):
+		print "P2P: Closing P2P driver"
+		self.server_sock.close()
+		#self.sock_listener_thread.terminate()
+		
 	def create_server(self):
 		# Create a TCP/IP socket
 		self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				
 		print "Starting Cat to Cat connection on " + str(self.own_ip) + " port " + str(self.own_port)
-		self.server_sock.bind((self.own_ip, self.own_port))
+		
+		try:
+			self.server_sock.bind((self.own_ip, self.own_port))
 
-		# Listen for incoming connections
-		self.server_sock.listen(1)
+			# Listen for incoming connections
+			self.server_sock.listen(1)
 
-
-		sock_listener_thread = threading.Thread(target=self.sock_listener)
-		sock_listener_thread.daemon = True
-		sock_listener_thread.start()
+			self.sock_listener_thread = threading.Thread(target=self.sock_listener)
+			self.sock_listener_thread.daemon = True
+			self.sock_listener_thread.start()
+			
+		except socket.error as e:
+			print "P2P: Server Binding Error. Port is already in use"
+		
+			
 
 	def send_message(self, msg=""):
 		sender_thread = threading.Thread(target=self.sender, args=(msg,))
@@ -87,8 +97,6 @@ class p2p_driver:
 				print "ERROR client not ready "
 				print err
 			
-			finally:
-				self.client_sock.close()
 
 	def sock_listener(self):
 		while True:
@@ -103,6 +111,12 @@ class p2p_driver:
 
 			except KeyboardInterrupt:
 				print "Exiting socket listener reading loop."
+				sys.exit()
+			
+			finally:
+				print("P2P: Unexpected error")
+				self.client_sock.close()
+				del self
 				sys.exit()
 			
 if __name__ == '__main__':

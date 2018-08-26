@@ -98,14 +98,12 @@ class led_driver:
 		while True:
 			try:
 				if self.heartbeat_enabled == True:
-					self.set_single_led(self.heart_led, self.heartbeat_intensity, 0, 0, None, False)
-					self.neopixel_led.show()
-	
+					self.set_single_led(self.heart_led, self.heartbeat_intensity, 0, 0, brightness=None, override=False, show=True)
 					time.sleep(1)
-					self.set_single_led(self.heart_led, 0, 0, 0, None, False)
-					self.neopixel_led.show()
 
+					self.set_single_led(self.heart_led, 0, 0, 0, brightness=None, override=False, show=True)
 					time.sleep(1)
+
 				else:
 					time.sleep(1)
 			
@@ -115,7 +113,7 @@ class led_driver:
 
 	def set_heartbeat(self, enabled=True):
 		self.heartbeat_enabled = enabled
-		print('turning heartbeat to', self.heartbeat_enabled)
+		#print('turning heartbeat to', self.heartbeat_enabled)
 	
 	def colorWipe(self, r, g, b, first_led = 0, last_led = None, wait_ms=20):
 		if last_led == None:
@@ -186,3 +184,10 @@ class led_driver:
 
 	def show(self):
 		return self.neopixel_led.show()
+	
+	def __del__(self):
+		print "Led_driver: Closing LED driver"
+		set_heartbeat(False)
+		
+		
+

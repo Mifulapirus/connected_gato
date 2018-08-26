@@ -15,6 +15,7 @@ import datetime
 import Adafruit_BMP.BMP085 as BMP085
 import threading
 import ConfigParser
+import sys
 
 
 config_file_path = "/home/pi/connected_gato/connected_gato.conf"
@@ -51,10 +52,14 @@ class BMP180:
 		self.pressure_last_update = 0
 		self.last_pressure_delta = 0
 		
-		check_compression_thread = threading.Thread(target=self.check_compression)
-		check_compression_thread.daemon = True
-		check_compression_thread.start()
-
+		self.check_compression_thread = threading.Thread(target=self.check_compression)
+		self.check_compression_thread.daemon = True
+		self.check_compression_thread.start()
+		
+	def __del__(self):
+		print "BMP180: Closing BMP180 driver"
+		self.check_compression_thread.terminate()
+	
 	def check_compression(self):
 		print "Checking compression thread started"
 		#_decompressing = False
@@ -88,8 +93,6 @@ class BMP180:
 						print ("Ambient Pressure is been updated due to minimal change in environment")
 						self.calibrate_ambient_pressure(_current_pressure)
 						self.current_compressiong_state = "calibrated"
-					
-					
 
 				#It started decompressing
 				elif _current_pressure < self.max_squish_pressure_threshold:
@@ -110,8 +113,10 @@ class BMP180:
 				time.sleep(0.01)
 			
 			except KeyboardInterrupt:
-				print "Exiting pressure reading loop."
+				print "BMP180: Exiting pressure reading loop."
+				del self
 				sys.exit()
+				
 
 	def get_pressure(self, samples = 10):
 		cumulative_pressure = 0.0
