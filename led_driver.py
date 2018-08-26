@@ -154,7 +154,7 @@ class led_driver:
 			self.set_single_led(i, r, g, b, brightness, override)
 		self.neopixel_led.show()
 
-	def set_single_led(self, led_number, r, g, b, brightness = None, override=True):
+	def set_single_led(self, led_number, r, g, b, brightness = None, override=True, show=False):
 		if brightness == None:
 			brightness = self.current_brightness
 				
@@ -168,6 +168,9 @@ class led_driver:
 			self.current_b = blue_channel
 		
 		self.neopixel_led.setPixelColor(led_number, self.Color(green_channel, red_channel, blue_channel))
+		if (show == True):
+			self.neopixel_led.show()
+
 
 	def set_all_leds(self, r, g, b, brightness = None, override=True):
 		if brightness == None:
