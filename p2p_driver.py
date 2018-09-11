@@ -46,14 +46,15 @@ class p2p_driver:
 
 	def __del__(self):
 		print "P2P: Closing P2P driver"
-		self.server_sock.close()
+		#self.server_sock.shutdown(socket.SHUT_RDWR)
 		#self.sock_listener_thread.terminate()
 		
 	def create_server(self):
 		# Create a TCP/IP socket
 		self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				
-		print "P2P: Starting Cat to Cat connection on " + str(self.own_ip) + " port " + str(self.own_port)
+		self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			
+		print "P2P: Starting Cat to Cat connection on " + str(self.own_ip) + " port " + str(self.own_port) + " and reusable address"
 		
 		connected = False
 		while connected == False:
@@ -69,7 +70,10 @@ class p2p_driver:
 				connected = True
 				
 			except socket.error as e:
-				print "P2P: Server Binding Error. Port is already in use"
+				print "P2P: Server Binding Error. Port is already in use "
+				print e				
+				#self.server_sock.shutdown(socket.SHUT_RDWR)
+
 				connected = False
 				time.sleep(5)
 
@@ -85,6 +89,7 @@ class p2p_driver:
 			try:
 				# Create a TCP/IP socket
 				self.client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.client_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 				# Connect the socket to the port where the server is listening
 				print "P2P: Connecting to Paired cat on " + str(self.paired_ip) + " port " + str(self.paired_port)

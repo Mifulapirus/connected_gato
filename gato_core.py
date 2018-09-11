@@ -220,7 +220,7 @@ def process_command(msg):
 		if alarm_time == None:
 			telegram_send(chat_id, "I don't have any alarm set right now. Send me any of the following commands to set up an alarm: \n" + str(commands['check alarm']))
 		else:
-			telegram_send(chat_id, 'I have an alarm set at ' + str(alarm_time))
+			telegram_send(chat_id, 'I have an alarm set at ' + time.strftime("%H:%M", alarm_time))
 		
 		
 	elif any(word in message for word in commands['time']):

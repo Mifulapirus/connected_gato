@@ -31,6 +31,7 @@ IR_LED_ID = 1
 strip.set_heartbeat(False)
 strip.colorWipe(50, 50, 0)
 strip.colorWipe(0, 0, 0)
+
 if __name__ == '__main__':
 	#try:
 	strip.set_single_led(IR_LED_ID, 50, 50, 0, show=True)
